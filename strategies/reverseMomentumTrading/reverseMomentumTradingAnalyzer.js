@@ -7,15 +7,13 @@
  * For more information regarding the type of data and files that it's setup to use, see the readme.
  */
 require('dotenv').config()
-const pino = require("pino");
-const logger = pino({ level: process.env.LOG_LEVEL || "info" });
+const logger = require("../../lib/logger");
 const fileSystem = require("fs").promises;
-const csvParser = require("csv-parse/lib/sync");
+const { parse } = require("csv-parse/sync");
 
 //***************Trade configuration*****************
 
-//The name of the file containing the data to be tested:
-const dataFileName = "btcusd.csv";
+const dataFileName = process.env.CSV_DATA_FILE || "btcusd.csv";
 
 //The bot trading config values (See momentumTrading.js for more information on these values):
 const tradingConfig = {
@@ -196,7 +194,7 @@ async function analyzeStrategy(tradingConfig, dataFileName) {
         }
 
         const fileContent = await fileSystem.readFile(dataFileName);
-        const records = csvParser(fileContent, { columns: true });
+        const records = parse(fileContent, { columns: true });
 
         const priceInfo = {
             currentPrice: parseFloat(records[0].high),

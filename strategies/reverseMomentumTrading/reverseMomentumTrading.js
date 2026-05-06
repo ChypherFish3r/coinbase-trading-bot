@@ -2,8 +2,8 @@ const CoinbasePro = require("coinbase-pro");
 require('dotenv').config()
 const { buyPosition, sellPosition } = require("../../buyAndSell");
 const coinbaseProLib = require("../../coinbaseProLibrary");
-const pino = require("pino");
-const logger = pino({ level: process.env.LOG_LEVEL || "info" });
+const logger = require("../../lib/logger");
+const { positionDataPath } = require("../../lib/paths");
 const fileSystem = require("fs");
 
 const key = `${process.env.API_KEY}`;
@@ -388,7 +388,7 @@ async function reverseMomentumStrategyStart() {
         //Check for an existing positionData file to start the bot with:
         try {
             //read positionData file:
-            let rawFileData = fileSystem.readFileSync("positionData.json");
+            let rawFileData = fileSystem.readFileSync(positionDataPath());
             positionInfo = JSON.parse(rawFileData);
             logger.info("Found positionData.json file, starting with position data. Position data: " + JSON.stringify(positionInfo));
         } catch (err) {

@@ -1,93 +1,195 @@
-# CrypFinder Bot 
-## Version 1.55
+# Coinbase Trading Bot
 
-## Update: 
-I made a simplified version of this bot for BinanceUS using Python also on my profile. I don't really work on this project anymore but it can serve as a starting point very basic crypto trading bot
+**Node.js momentum strategies with optional profit transfers, CSV backtests, and a clean CLI.**
 
-## Summary: 
-CrypFinder is a Coinbase Pro API trading bot that currently implements a basic momentum trading strategy and reverse momentum trading strategy in NodeJS using the Coinbase Pro API, as well as its own custom library for the endpoints that are not supported by the now deprecated Coinbase Pro NodeJS Library. Currently, Coinbase Pro limits the number of portfolios to five, this means that the bot can run up to four trading instances simultaneously per Coinbase Pro account. This bot can be modified to trade any product pairs available on Coinbase Pro, such as BTC-USD, ETH-USD, etc., but stablecoin (USDC to other coins) and crypto markets (coin to other coins) aren't currently tested, only USD markets (USD to coins). 
+Originally inspired by the **CrypFinder** / Coinbase Pro ecosystem, this repo packages several strategies behind one entrypoint (`index.js`), central logging, environment validation, and npm scripts so you can experiment without hunting through commented-out requires.
 
-The momentum strategy will work as follows: The bot will start by getting the amount of USD available for the provided API key's profile (profile=portfolio on the coinbase pro website). If the amount is greater than zero, it will monitor the price changes of the chosen product using a peak/valley system; if the price changes by the specified delta, it will purchase a position. Then, it will monitor price changes until the delta condition and profit condition are met; after selling for a profit, it can deposit a cut of the profit to a different portfolio for saving. The reverse momentum trading strategy, is, as the name implies the reverse where it sells when the price goes up and buys when it goes down.
+---
 
-The bot features a number of variables at the top that can be configured to customize how it trades. This includes the deltas that specify an amount of price change that will trigger a buy/sell, the minimum acceptable profit from a trade, the name of currency to trade, the profile names, the deposit enable/disable flag, the deposit amount, and more. Of course, any of the code can be modified to customize it fully. This project is a great way to trade crypto on Coinbase Pro through their API.
+## Important: Coinbase Pro and this codebase
 
-## How to run the program:
-I suggest starting by using this program in the [Coinbase Pro Sandbox](https://docs.pro.coinbase.com/#sandbox) for testing. 
-1. Create a coinbase pro account. Install NodeJS, install Git, consider adding an ESLint plugin to your IDE to use the eslint configuration.
-2. Setup your Coinbase Pro account portfolios (portfolios are also referred to as profiles). Each bot that runs needs it's own portfolio. The bot will take any available balance in the portfolio that it's tied to via the API key and start trading with it. Coinbase Pro gives you the default (Default Portfolio) to start with, but, you can add up to four more (5 is the max). Don't use a bot to trade in the default portfolio because that's where money transfers go by default; which, means the funds could get swept up by the bot before you can allocate them where you want. Create a new portfolio for each bot you want to run, for example you could create one called "BTC trader" that the bot trades bitcoin inside of. If you wish to use the feature that deposits all or a portion of profits into another portfolio to save it then by default those deposits will go to the default portfolio, but you have the option to create a different portfolio to use instead. Take note of the profile names you created as you will need them in steps 5 & 6.
-3. Create the API key for the portfolio you want the bot to trade on, give it View/Trade/Transfer permissions and whitelist your public IP. [More info here](https://help.coinbase.com/en/pro/other-topics/api/how-do-i-create-an-api-key-for-coinbase-pro). 
-4. Clone the github repo locally and run `npm install` from within the repo directory.
-5. Configure the variables at the top of ../Strategies/MomentumTrading/momentumTrading.js to select your Deltas, product to trade,Profile Names etc.  DO NOT ADD YOUR API INFORMATION HERE. You will use your API information in Step 6. The variables can also be added to the .env file instead of directly edited in code.
-6. Create a .env file in the root directory of the projects repo with the following:
+Coinbase has **retired Coinbase Pro** in favor of Coinbase Advanced Trade. The `coinbase-pro` npm client and the REST/WebSocket URLs used here target the **legacy Coinbase Pro API**. They remain useful as **reference implementations** (strategy logic, order flow, backtests), but **production trading may no longer be available** on those endpoints.
 
-    API_KEY=\<your API key>
+Treat this project as:
 
-    API_SECRET=\<your API secret>
+- A **learning sandbox** for peak/valley momentum mechanics and limit-order workflows
+- A **backtesting harness** over historical OHLC CSV files
+- A **starting point** if you port the same ideas to [Coinbase Advanced Trade API](https://docs.cdp.coinbase.com/advanced-trade/docs/welcome) or another exchange
 
-    API_PASSPHRASE=\<your API passphrase>
+**Disclaimer:** Trading crypto carries risk of total loss. This software is not financial advice, has no warranty, and you are responsible for keys, compliance, taxes, and testing.
 
-    TRADING_ENV=\<real> Leaving this out defaults to sandbox environment
+---
 
-    Additionally consider adding `LOG_LEVEL=debug` here if you want the full debug logs.
+## Features
 
-    All of the the trading variables can be configured in the code or in the .env below is a list of these variables:
+| Capability | Description |
+|------------|-------------|
+| **Momentum** | Buys on strength after a valley→peak move; sells when price retraces by your delta while covering fees and minimum profit. |
+| **Reverse momentum** | Inverse framing: fades rallies and buys dips per your tuned deltas. |
+| **Momentum + stop-loss** | Same core idea with an extra stop-loss threshold (`STOP_LOSS_DELTA`). |
+| **CSV analyzers** | Replay strategies on minute OHLC data and summarize buys, sells, and P&L shape. |
+| **Resume state** | Persists position metadata to disk (default `positionData.json`) so restarts can continue safely. |
+| **Profit skim** | Optional transfer of a fraction of realized profit to another portfolio/profile after a winning sell. |
 
-    SELL_POSITION_DELTA=\<decimal value>
+---
 
-    BUY_POSITION_DELTA=\<decimal value>
+## Quick start
 
-    ORDER_PRICE_DELTA=\<decimal value>
+### Prerequisites
 
-    BASE_CURRENCY_NAME=\<string>
+- **Node.js 18+**
+- A Coinbase **portfolio** (profile) dedicated to the bot — avoid the default portfolio if you move funds manually
+- API key with appropriate permissions **if** you still have access to Coinbase Pro–compatible endpoints (see disclaimer above)
 
-    QUOTE_CURRENCY_NAME=\<string>
+### Install
 
-    TRADING_PROFILE_NAME=\<string>
+```bash
+git clone <your-fork-url>
+cd coinbase-trading-bot
+npm install
+cp .env.example .env
+# Edit .env — never commit real keys
+```
 
-    DEPOSIT_PROFILE_NAME=\<string>
+### Choose a strategy
 
-    DEPOSITING_ENABLED=\<bool>
+Set `STRATEGY` in `.env` or pass via npm script:
 
-    DEPOSITING_AMOUNT=\<decimal from 1 to 0>
+| `STRATEGY` | npm shortcut | Needs API keys |
+|------------|----------------|----------------|
+| `momentum` (default) | `npm run start:momentum` | Yes |
+| `reverse` | `npm run start:reverse` | Yes |
+| `momentum_stoploss` | `npm run start:momentum-stoploss` | Yes |
+| `momentum_analyze` | `npm run analyze:momentum` | No |
+| `reverse_analyze` | `npm run analyze:reverse` | No |
 
-    BALANCE_MINIMUM=\<decimal>
+```bash
+npm start
+# or explicitly:
+npm run start:momentum
+```
 
-7. Add some funds to your default portfolio and make sure there is no existing coin balance for the product you're trading if you're just starting the bot. See "Restarting the bot" if you want the bot to pick up where it left off after stopping it.
-8. Run the program with `node index.js` from within the repo directory.
+Live trading (when supported by your environment):
 
-### Restarting the bot:
-If at any point the bot stops running for any reason, the the bot keeps a file called positionData.json that tracks whether or not it was in a position, and the information associated with that position. If you restart the bot it will read that file and automatically pick up where it left off. Don't try to add more coins to the existing position or it will cause unexpected behavior since the bot won't know the associated costs with the newly added coin. You can, at any point, add USD to a portfolio, the bot will start trading with the newly added USD when it completes a buy/sell cycle. If you want to start the bot fresh without existing data, simply make sure there is no left over coin in your profile and delete the positionData.json file.
+```bash
+# In .env:
+TRADING_ENV=real
+API_KEY=...
+API_SECRET=...
+API_PASSPHRASE=...
+```
 
-The positionData.json file contains a JSON object with 3 fields, positionExists (boolean), positionAcquiredPrice (Number), positionAcquiredCost (Number).
+Sandbox-style defaults apply when `TRADING_ENV` is unset or not `real`.
 
-Example of a position existing positionData.json file:
-{"positionExists":true,"positionAcquiredPrice":48560.00000000001,"positionAcquiredCost":274.66836873840003}
+### Backtesting
 
-Example of a position not existing positionData.json file:
-{"positionExists":false,"positionAcquiredPrice":228.69000000000003,"positionAcquiredCost":299.85119860983207}
+1. Obtain OHLC CSV data with a **`high`** column (see [Kaggle crypto minute data](https://www.kaggle.com/datasets) or similar).
+2. Place the file in the project directory (or reference an absolute path).
+3. Set in `.env`:
 
-Notice that the position acquired cost and price fields still exist in the file when positionExists is false, but they are ignored.
+```bash
+CSV_DATA_FILE=your_pair.csv
+STRATEGY=momentum_analyze   # or reverse_analyze
+```
 
-## How to contribute:
-1. Fork the repo.
-2. Clone the github repo locally and run `npm install` 
-3. Create a new branch with a name that describes the feature/change you're making.
-4. Check the road map for ideas of things to work on.
-5. Make your changes and commit them with a descriptive message.
-6. Push your changes upstream.
-7. When you're done testing your changes, create a pull request to merge your repository into LeviathanLevi/Coinbase-Pro-Crypto-Trading-Bot-CrypFinder. Then wait for approval.
+4. Tune constants at the top of the analyzer file under `tradingConfig`, then:
 
-## Running the program out of sandbox:
-When you're confident in the configuration/code base and want to run it in the real environment, comment out the sandbox env variables and uncomment out the real API URI variables. Update the .env file with a valid API key
+```bash
+npm run analyze:momentum
+```
 
-## Momentum and reverse momentum trading strategy analyzer:
-The analyzers are a way to run data against the bot strategy to see how well it performs. It takes in a .csv file with OHLC data. Carston Klein has already compiled a massive dataset that is perfect for this task and it's available for free on Kaggle [check it out](https://www.kaggle.com/tencars/392-crypto-currency-pairs-at-minute-resolution?select=ampusd.csv). After downloading the file for the coin data you want, just trim the .csv file to the length of time you want to test and run the analyzer with the configuration you want and it will generate a report showing how it did. He also wrote [this article](https://medium.com/coinmonks/how-to-get-historical-crypto-currency-data-954062d40d2d) on how to get similar data yourself.
+---
 
-## Helpful links:
-[Coinbase Pro](https://pro.coinbase.com/trade/BTC-USD)
+## Configuration reference
 
-[Coinbase Pro API Docs](https://docs.pro.coinbase.com/#introduction)
+All secrets and overrides belong in **`.env`** (see `.env.example`).
 
-[Coinbase Pro NodeJS Library](https://www.npmjs.com/package/coinbase-pro)
+**Credentials**
 
-[Flow diagram of the momentum strategy, open it in Google draw.io for best results (May be outdated, but can help to give an idea of how the program works)](https://drive.google.com/file/d/1sMg7nWcuCDwHS5wdwHgoe5qqODO7UEFA/view?usp=sharing)
+- `API_KEY`, `API_SECRET`, `API_PASSPHRASE` — Coinbase Pro–style API trio
+- `TRADING_ENV` — `real` for production URI; otherwise sandbox URIs are used
+
+**Trading knobs** (optional; defaults live in each strategy file)
+
+- `SELL_POSITION_DELTA`, `BUY_POSITION_DELTA`, `ORDER_PRICE_DELTA`
+- `BASE_CURRENCY_NAME`, `QUOTE_CURRENCY_NAME` — e.g. `BTC` + `USD` → `BTC-USD`
+- `TRADING_PROFILE_NAME`, `DEPOSIT_PROFILE_NAME` — portfolio names as shown in Coinbase
+- `DEPOSITING_ENABLED`, `DEPOSITING_AMOUNT` — profit transfer after winning sells
+- `BALANCE_MINIMUM` — quote currency left aside to avoid rounding failures
+- `STOP_LOSS_DELTA` — **momentum_stoploss** only
+
+**Paths**
+
+- `POSITION_DATA_FILE` — state file for resume (default `positionData.json`)
+- `CSV_DATA_FILE` — input for analyzers
+
+**Logging**
+
+- `LOG_LEVEL` — e.g. `info`, `debug`
+
+---
+
+## How strategies think (short)
+
+1. **WebSocket ticker** keeps a live price for the product pair.
+2. The bot tracks **peaks and valleys** and compares moves against your **delta** thresholds.
+3. **Limit orders** (`FOK`) try to buy or sell with a small **order price cushion** (`ORDER_PRICE_DELTA`).
+4. After a profitable round-trip sell, an optional **profile transfer** moves part of the profit to your savings portfolio.
+
+For a narrative deep-dive, see the markdown files under `strategies/*/`.
+
+---
+
+## Restarting and `positionData.json`
+
+If the process stops, it reads `POSITION_DATA_FILE` to restore `positionExists`, acquisition price, and cost. Do not manually add coins to an open position the bot thinks it owns — cost basis will be wrong.
+
+To start fresh: flatten the position in the UI for that portfolio, then delete your position state file (default `positionData.json`).
+
+---
+
+## Development
+
+```bash
+npm run lint
+```
+
+Project layout:
+
+```text
+index.js              # Loads .env, validates credentials, runs STRATEGY
+lib/
+  logger.js           # Shared Pino logger
+  paths.js            # positionData path resolver
+  strategies.js       # Strategy registry
+  validateEnv.js      # API key checks
+buyAndSell.js         # Shared limit-order buy/sell helpers
+coinbaseProLibrary.js # Signed REST helpers (profiles, fees, transfers)
+strategies/
+  momentumTrading/
+  momentumTradingWithStopLoss/
+  reverseMomentumTrading/
+```
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create a branch for your change
+3. Run `npm run lint`
+4. Open a pull request with a clear description
+
+---
+
+## Credits & license
+
+Based on prior CrypFinder / Coinbase Pro bot work by Levi Leuthold and community forks. Licensed under **ISC** unless otherwise noted in `package.json`.
+
+---
+
+## Links
+
+- [Coinbase Developer Platform (Advanced Trade)](https://docs.cdp.coinbase.com/) — migration path for new integrations
+- [Historical crypto OHLC ideas](https://medium.com/coinmonks/how-to-get-historical-crypto-currency-data-954062d40d2d)
+- Community datasets on [Kaggle](https://www.kaggle.com/datasets)

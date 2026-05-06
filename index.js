@@ -1,35 +1,52 @@
-/* eslint-disable no-unused-vars */
+"use strict";
 
-/*
-*   This is the entry point of program. Select the strategy or analyzer(s)
-*/
-const momentumStrategyStart = require("./strategies/momentumTrading/momentumTrading");
-const momentumStrategyAnalyzerStart = require("./strategies/momentumTrading/momentumTradingAnalyzer");
+require("dotenv").config();
 
-const momentumWithStopLossStrategyStart = require("./strategies/momentumTradingWithStopLoss/momentumTradingWithStopLoss");
+const logger = require("./lib/logger");
+const { strategies, resolveStrategy } = require("./lib/strategies");
+const { assertTradingCredentials } = require("./lib/validateEnv");
 
-const reverseMomentumStrategyStart = require("./strategies/reverseMomentumTrading/reverseMomentumTrading");
-const reverseMomentumStrategyAnalyzerStart = require("./strategies/reverseMomentumTrading/reverseMomentumTradingAnalyzer");
+const strategyKey = process.env.STRATEGY || "momentum";
+const entry = resolveStrategy(strategyKey);
 
+if (!entry) {
+    logger.error(
+        {
+            STRATEGY: strategyKey,
+            valid: Object.keys(strategies).join(", "),
+        },
+        "Unknown STRATEGY — use one of the keys listed in valid"
+    );
+    process.exit(1);
+}
 
-/*** Make sure to configure the momentumStrategy in ./strategies/momentumTrading/momentumTrading.js or in the .env before launching ***/
-//Launches the momentum strategy and starts the bot:
-momentumStrategyStart();
+logger.info(
+    {
+        strategy: strategyKey,
+        description: entry.description,
+        tradingEnv: process.env.TRADING_ENV || "sandbox",
+    },
+    "Coinbase trading bot starting"
+);
 
-//Launches the momentum strategy anaylzer for back testing:
-//momentumStrategyAnalyzerStart();
+try {
+    if (entry.requiresAuth) {
+        assertTradingCredentials();
+    }
+} catch (err) {
+    logger.error(err.message || err);
+    process.exit(1);
+}
 
-// **********************************************************************************************************************
+function shutdown(signal) {
+    logger.info({ signal }, "Shutdown requested — exiting");
+    process.exit(0);
+}
 
-/*** Make sure to configure the momentumStrategy in ./strategies/momentumTrading/momentumTrading.js or in the .env before launching ***/
-//Launches the reverse momentum strategy and starts the bot:
-//reverseMomentumStrategyStart();
+process.once("SIGINT", () => shutdown("SIGINT"));
+process.once("SIGTERM", () => shutdown("SIGTERM"));
 
-//Launches the reverse momentum strategy anaylzer for back testing:
-//reverseMomentumStrategyAnalyzerStart();
-
-// **********************************************************************************************************************
-
-/*** Make sure to configure the momentumWithStopLossStrategy in ./strategies/momentumTradingWithStopLoss/momentumTradingWithStopLoss.js or in the .env before launching ***/
-//Launches the momentum with stop loss strategy and starts the bot:
-//momentumWithStopLossStrategyStart();
+entry.run().catch((err) => {
+    logger.error(err, "Fatal error");
+    process.exit(1);
+});

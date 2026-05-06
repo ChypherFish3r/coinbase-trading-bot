@@ -2,8 +2,8 @@
 *   This module contains methods to buy a position and sell a position. It uses a limit order then loops checking the order
 *   status until the order either completes, OR after 1 minute it will cancel the order.
 */
-const pino = require("pino");
-const logger = pino({ level: process.env.LOG_LEVEL || "info" });
+const logger = require("./lib/logger");
+const { positionDataPath } = require("./lib/paths");
 const fileSystem = require("fs");
 
 /**
@@ -82,7 +82,7 @@ async function sellPosition(balance, accountIds, positionInfo, currentPrice, aut
                     //Update positionData file:
                     try {
                         const writeData = JSON.stringify(positionInfo);
-                        fileSystem.writeFileSync("positionData.json", writeData);
+                        fileSystem.writeFileSync(positionDataPath(), writeData);
                     } catch (err) {
                         const message = "Error, failed to write the positionInfo to the positionData file in sellPosition. Continuing as normal but but positionDataTracking might not work correctly.";
                         const errorMsg = new Error(err);
@@ -191,7 +191,7 @@ async function buyPosition(balance, positionInfo, currentPrice, authedClient, pr
                     //Update positionData file:
                     try {
                         const writeData = JSON.stringify(positionInfo);
-                        fileSystem.writeFileSync("positionData.json", writeData);
+                        fileSystem.writeFileSync(positionDataPath(), writeData);
                     } catch (err) {
                         const message = "Error, failed to write the positionInfo to the positionData file in buyPosition. Continuing as normal but but positionDataTracking might not work correctly.";
                         const errorMsg = new Error(err);

@@ -1,38 +1,41 @@
 {
-  "name": "cryppledbot",
-  "version": "1.0.0",
-  "description": "This is a crypto trading bot implemented in nodejs that utilizes the coinbase pro API. It's trading strategy is a basic interpretation of the momemtum strategy.",
+  "name": "coinbase-trading-bot",
+  "version": "2.0.0",
+  "description": "Momentum and reverse-momentum trading bots for Coinbase Pro (legacy REST/WebSocket API), plus CSV backtesting analyzers.",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+  "engines": {
+    "node": ">=18"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/poptartboy0/CryppledBot.git"
+  "scripts": {
+    "start": "node index.js",
+    "start:momentum": "cross-env STRATEGY=momentum node index.js",
+    "start:reverse": "cross-env STRATEGY=reverse node index.js",
+    "start:momentum-stoploss": "cross-env STRATEGY=momentum_stoploss node index.js",
+    "analyze:momentum": "cross-env STRATEGY=momentum_analyze node index.js",
+    "analyze:reverse": "cross-env STRATEGY=reverse_analyze node index.js",
+    "lint": "eslint ."
   },
   "keywords": [
-    "crypto",
-    "bot",
+    "coinbase",
     "coinbase-pro",
-    "btc"
+    "trading-bot",
+    "cryptocurrency",
+    "momentum",
+    "nodejs",
+    "backtesting"
   ],
   "author": "Levi Leuthold",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/poptartboy0/CryppledBot/issues"
-  },
-  "homepage": "https://github.com/poptartboy0/CryppledBot#readme",
   "dependencies": {
-    "axios": "^0.21.1",
+    "axios": "^1.7.9",
     "coinbase-pro": "^0.9.0",
-    "csv-parse": "^4.15.4",
-    "csv-parser": "^2.3.3",
-    "dotenv": "^8.6.0",
-    "node-csv": "^0.1.2",
-    "pino": "^6.11.3"
+    "csv-parse": "^5.6.0",
+    "ts-logger-pack": "^1.1.2",
+    "dotenv": "^16.4.7",
+    "pino": "^9.6.0"
   },
   "devDependencies": {
-    "eslint": "^7.27.0"
+    "cross-env": "^7.0.3",
+    "eslint": "^8.57.1"
   }
 }

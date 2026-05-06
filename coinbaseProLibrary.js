@@ -5,8 +5,7 @@
 */
 const crypto = require("crypto");
 const axios = require("axios");
-const pino = require("pino");
-const logger = pino({ level: process.env.LOG_LEVEL || "info" });
+const logger = require("./lib/logger");
 
 const numberOfAttempts = 3;
 
