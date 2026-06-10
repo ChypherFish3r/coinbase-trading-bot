@@ -3,8 +3,7 @@ require('dotenv').config()
 const { buyPosition, sellPosition } = require("../../buyAndSell");
 const coinbaseProLib = require("../../coinbaseProLibrary");
 const logger = require("../../lib/logger");
-const { positionDataPath } = require("../../lib/paths");
-const fileSystem = require("fs");
+const { loadPosition } = require("../../lib/positionStore");
 
 const key = `${process.env.API_KEY}`;
 const secret = `${process.env.API_SECRET}`;
@@ -404,21 +403,20 @@ async function momentumStrategyStart() {
 
         let positionInfo;
 
-        //Check for an existing positionData file to start the bot with:
         try {
-            //read positionData file:
-            let rawFileData = fileSystem.readFileSync(positionDataPath());
-            positionInfo = JSON.parse(rawFileData);
-            logger.info("Found positionData.json file, starting with position data. Position data: " + JSON.stringify(positionInfo));
-        } catch (err) {
-            if (err.code === "ENOENT") {
-                logger.info("No positionData file found, starting with no existing position.");
+            const loaded = await loadPosition();
+            positionInfo = loaded.position;
+            if (loaded.source === "none") {
+                logger.info("No position data found, starting with no existing position.");
             } else {
-                const message = "Error, failed to read file for a reason other than it doesn't exist. Continuing as normal but positionDataTracking might not work correctly.";
-                const errorMsg = new Error(err);
-                logger.error({ message, errorMsg, err });
+                logger.info(
+                    "Found position data (" + loaded.source + "), starting with position data: " + JSON.stringify(positionInfo)
+                );
             }
-
+        } catch (err) {
+            const message = "Error loading position data. Continuing as normal but positionDataTracking might not work correctly.";
+            const errorMsg = new Error(err);
+            logger.error({ message, errorMsg, err });
             positionInfo = {
                 positionExists: false,
             };

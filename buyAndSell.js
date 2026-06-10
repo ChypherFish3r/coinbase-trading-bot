@@ -3,8 +3,7 @@
 *   status until the order either completes, OR after 1 minute it will cancel the order.
 */
 const logger = require("./lib/logger");
-const { positionDataPath } = require("./lib/paths");
-const fileSystem = require("fs");
+const { savePosition } = require("./lib/positionStore");
 
 /**
  * Halts the program from running temporarily to prevent it from hitting API call limits
@@ -79,12 +78,10 @@ async function sellPosition(balance, accountIds, positionInfo, currentPrice, aut
                 } else {
                     positionInfo.positionExists = false;
 
-                    //Update positionData file:
                     try {
-                        const writeData = JSON.stringify(positionInfo);
-                        fileSystem.writeFileSync(positionDataPath(), writeData);
+                        await savePosition(positionInfo);
                     } catch (err) {
-                        const message = "Error, failed to write the positionInfo to the positionData file in sellPosition. Continuing as normal but but positionDataTracking might not work correctly.";
+                        const message = "Error, failed to persist positionInfo in sellPosition. Continuing as normal but positionDataTracking might not work correctly.";
                         const errorMsg = new Error(err);
                         logger.error({ message, errorMsg, err });
                     }
@@ -188,12 +185,10 @@ async function buyPosition(balance, positionInfo, currentPrice, authedClient, pr
                     positionInfo.positionAcquiredPrice = parseFloat(orderDetails.executed_value) / parseFloat(orderDetails.filled_size);
                     positionInfo.positionAcquiredCost = parseFloat(orderDetails.executed_value) + parseFloat(orderDetails.fill_fees);
 
-                    //Update positionData file:
                     try {
-                        const writeData = JSON.stringify(positionInfo);
-                        fileSystem.writeFileSync(positionDataPath(), writeData);
+                        await savePosition(positionInfo);
                     } catch (err) {
-                        const message = "Error, failed to write the positionInfo to the positionData file in buyPosition. Continuing as normal but but positionDataTracking might not work correctly.";
+                        const message = "Error, failed to persist positionInfo in buyPosition. Continuing as normal but positionDataTracking might not work correctly.";
                         const errorMsg = new Error(err);
                         logger.error({ message, errorMsg, err });
                     }

@@ -32,7 +32,9 @@ out/
 
 # Runtime state (do not commit live positions or backtest inputs)
 positionData.json
+positionData.test.json
 *.csv
+!fixtures/*.csv
 
 # Coverage / test / caches
 coverage/

@@ -28,7 +28,7 @@ Treat this project as:
 | **Reverse momentum** | Inverse framing: fades rallies and buys dips per your tuned deltas. |
 | **Momentum + stop-loss** | Same core idea with an extra stop-loss threshold (`STOP_LOSS_DELTA`). |
 | **CSV analyzers** | Replay strategies on minute OHLC data and summarize buys, sells, and P&L shape. |
-| **Resume state** | Persists position metadata to disk (default `positionData.json`) so restarts can continue safely. |
+| **Resume state** | Persists position metadata to disk (`positionData.json`) and optional Redis cache so restarts can continue safely. |
 | **Profit skim** | Optional transfer of a fraction of realized profit to another portfolio/profile after a winning sell. |
 
 ---

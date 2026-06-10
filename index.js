@@ -5,6 +5,7 @@ require("dotenv").config();
 const logger = require("./lib/logger");
 const { strategies, resolveStrategy } = require("./lib/strategies");
 const { assertTradingCredentials } = require("./lib/validateEnv");
+const { closeRedisClient, isRedisEnabled, pingRedis } = require("./lib/redis");
 
 const strategyKey = process.env.STRATEGY || "momentum";
 const entry = resolveStrategy(strategyKey);
@@ -20,33 +21,55 @@ if (!entry) {
     process.exit(1);
 }
 
-logger.info(
-    {
-        strategy: strategyKey,
-        description: entry.description,
-        tradingEnv: process.env.TRADING_ENV || "sandbox",
-    },
-    "Coinbase trading bot starting"
-);
-
-try {
-    if (entry.requiresAuth) {
-        assertTradingCredentials();
+async function bootstrap() {
+    if (isRedisEnabled()) {
+        const ok = await pingRedis();
+        logger[ok ? "info" : "warn"](
+            ok ? { cache: "redis" } : { cache: "memory" },
+            ok ? "Redis cache connected" : "Redis unreachable — using in-memory cache"
+        );
+    } else {
+        logger.info({ cache: "memory" }, "Redis cache disabled — using in-memory cache");
     }
-} catch (err) {
-    logger.error(err.message || err);
-    process.exit(1);
+
+    logger.info(
+        {
+            strategy: strategyKey,
+            description: entry.description,
+            tradingEnv: process.env.TRADING_ENV || "sandbox",
+        },
+        "Coinbase trading bot starting"
+    );
+
+    try {
+        if (entry.requiresAuth) {
+            assertTradingCredentials();
+        }
+    } catch (err) {
+        logger.error(err.message || err);
+        process.exit(1);
+    }
+
+    try {
+        await entry.run();
+    } finally {
+        await closeRedisClient().catch(() => undefined);
+    }
 }
 
 function shutdown(signal) {
-    logger.info({ signal }, "Shutdown requested — exiting");
-    process.exit(0);
+    closeRedisClient()
+        .catch(() => undefined)
+        .finally(() => {
+            logger.info({ signal }, "Shutdown requested — exiting");
+            process.exit(0);
+        });
 }
 
 process.once("SIGINT", () => shutdown("SIGINT"));
 process.once("SIGTERM", () => shutdown("SIGTERM"));
 
-entry.run().catch((err) => {
+bootstrap().catch((err) => {
     logger.error(err, "Fatal error");
     process.exit(1);
 });
