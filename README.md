@@ -1,6 +1,21 @@
-# Coinbase Trading Bot
+# Coinbase Trading Bot (Legacy)
 
-**Node.js momentum strategies with optional profit transfers, CSV backtests, and a clean CLI.**
+> **Node.js peak/valley momentum** strategies with optional profit transfers, CSV backtests, and a single CLI entrypoint — built for the **legacy Coinbase Pro API**.
+
+```text
+  WebSocket ticker
+        │
+        ▼
+  Peak / valley tracker
+        │
+        ▼
+  Delta thresholds ──► Limit orders (FOK)
+        │
+        ▼
+  Optional profit transfer + position resume
+```
+
+Part of the [Coinbase Bot Suite](../README.md). For new integrations, prefer the TypeScript bots (`cross-exchange-arbitrage-bot`, `market-making-bot`, etc.) on **Advanced Trade**.
 
 Originally inspired by the **CrypFinder** / Coinbase Pro ecosystem, this repo packages several strategies behind one entrypoint (`index.js`), central logging, environment validation, and npm scripts so you can experiment without hunting through commented-out requires.
 
@@ -138,6 +153,37 @@ All secrets and overrides belong in **`.env`** (see `.env.example`).
 
 For a narrative deep-dive, see the markdown files under `strategies/*/`.
 
+```mermaid
+flowchart TB
+  subgraph Entry
+    IDX["index.js"]
+    REG["lib/strategies.js"]
+  end
+
+  subgraph Strategy["Active strategy module"]
+    WS["WebSocket ticker"]
+    PV["Peak / valley logic"]
+    ORD["buyAndSell.js"]
+  end
+
+  subgraph State
+    FILE["positionData.json"]
+    REDIS[("Redis — optional\nlib/redis.js")]
+  end
+
+  subgraph Exchange
+    PRO["coinbaseProLibrary.js\nCoinbase Pro REST"]
+  end
+
+  IDX --> REG
+  REG --> WS
+  WS --> PV
+  PV --> ORD
+  ORD --> PRO
+  PV --> FILE
+  FILE -.-> REDIS
+```
+
 ---
 
 ## Restarting and `positionData.json`
@@ -148,27 +194,76 @@ To start fresh: flatten the position in the UI for that portfolio, then delete y
 
 ---
 
+## Project structure
+
+```text
+coinbase-trading-bot/
+├── .env.example                 # API keys, strategy, trading knobs
+├── package.json                 # start:* and analyze:* scripts
+├── index.js                     # Loads .env, validates env, runs STRATEGY
+│
+├── buyAndSell.js                # Shared limit-order buy/sell (FOK)
+├── coinbaseProLibrary.js        # Signed REST — profiles, fees, transfers
+│
+├── lib/
+│   ├── logger.js                # Shared Pino logger
+│   ├── paths.js                 # positionData.json path resolver
+│   ├── strategies.js            # Strategy registry (STRATEGY → module)
+│   ├── validateEnv.js           # API key presence checks
+│   ├── redis.js                 # ioredis-os client (optional)
+│   ├── positionStore.js         # Disk + Redis position persistence
+│   └── cache/
+│       └── store.js             # In-memory fallback cache
+│
+└── strategies/
+    ├── momentumTrading/
+    │   ├── momentumTrading.js           # Live momentum bot
+    │   ├── momentumTradingAnalyzer.js   # CSV backtest
+    │   └── momentumTrading.md           # Strategy write-up
+    ├── momentumTradingWithStopLoss/
+    │   ├── momentumTradingWithStopLoss.js
+    │   └── momentumTradingWithStopLoss.md
+    └── reverseMomentumTrading/
+        ├── reverseMomentumTrading.js
+        ├── reverseMomentumTradingAnalyzer.js
+        └── reverseMomentumTrading.md
+```
+
+### Module map
+
+| Path | Responsibility |
+|------|----------------|
+| `index.js` | Dotenv, credential validation, dispatches to selected strategy |
+| `lib/strategies.js` | Maps `STRATEGY` env to the correct require |
+| `buyAndSell.js` | Limit buy/sell with price cushion and fee awareness |
+| `coinbaseProLibrary.js` | Low-level signed HTTP for Pro endpoints |
+| `lib/positionStore.js` | Saves `positionExists`, cost basis — file + optional Redis |
+| `strategies/*/…Analyzer.js` | Offline CSV replay (no API keys) |
+
+### Strategy selector
+
+```mermaid
+flowchart LR
+  ENV["STRATEGY in .env"] --> IDX["index.js"]
+  IDX --> M["momentum"]
+  IDX --> R["reverse"]
+  IDX --> MS["momentum_stoploss"]
+  IDX --> MA["momentum_analyze"]
+  IDX --> RA["reverse_analyze"]
+  M --> LIVE["Live WebSocket + orders"]
+  R --> LIVE
+  MS --> LIVE
+  MA --> CSV["CSV analyzer only"]
+  RA --> CSV
+```
+
+---
+
 ## Development
 
 ```bash
+npm test          # position store unit tests
 npm run lint
-```
-
-Project layout:
-
-```text
-index.js              # Loads .env, validates credentials, runs STRATEGY
-lib/
-  logger.js           # Shared Pino logger
-  paths.js            # positionData path resolver
-  strategies.js       # Strategy registry
-  validateEnv.js      # API key checks
-buyAndSell.js         # Shared limit-order buy/sell helpers
-coinbaseProLibrary.js # Signed REST helpers (profiles, fees, transfers)
-strategies/
-  momentumTrading/
-  momentumTradingWithStopLoss/
-  reverseMomentumTrading/
 ```
 
 ---
