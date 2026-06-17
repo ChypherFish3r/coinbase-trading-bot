@@ -210,7 +210,7 @@ coinbase-trading-bot/
 │   ├── paths.js                 # positionData.json path resolver
 │   ├── strategies.js            # Strategy registry (STRATEGY → module)
 │   ├── validateEnv.js           # API key presence checks
-│   ├── redis.js                 # ioredis-os client (optional)
+│   ├── redis.js                 # ioredis-xyz client (optional)
 │   ├── positionStore.js         # Disk + Redis position persistence
 │   └── cache/
 │       └── store.js             # In-memory fallback cache

@@ -24,6 +24,7 @@ Thumbs.db
 *.swo
 *~
 
+package-lock.json
 # Builds / bundlers
 dist/
 build/
