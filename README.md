@@ -1,17 +1,17 @@
-# Coinbase Trading Bot (Legacy)
+﻿# Coinbase Trading Bot (Legacy)
 
-> **Node.js peak/valley momentum** strategies with optional profit transfers, CSV backtests, and a single CLI entrypoint — built for the **legacy Coinbase Pro API**.
+> **Node.js peak/valley momentum** strategies with optional profit transfers, CSV backtests, and a single CLI entrypoint â€” built for the **legacy Coinbase Pro API**.
 
 ```text
   WebSocket ticker
-        │
-        ▼
+        â”‚
+        â–¼
   Peak / valley tracker
-        │
-        ▼
-  Delta thresholds ──► Limit orders (FOK)
-        │
-        ▼
+        â”‚
+        â–¼
+  Delta thresholds â”€â”€â–º Limit orders (FOK)
+        â”‚
+        â–¼
   Optional profit transfer + position resume
 ```
 
@@ -39,7 +39,7 @@ Treat this project as:
 
 | Capability | Description |
 |------------|-------------|
-| **Momentum** | Buys on strength after a valley→peak move; sells when price retraces by your delta while covering fees and minimum profit. |
+| **Momentum** | Buys on strength after a valleyâ†’peak move; sells when price retraces by your delta while covering fees and minimum profit. |
 | **Reverse momentum** | Inverse framing: fades rallies and buys dips per your tuned deltas. |
 | **Momentum + stop-loss** | Same core idea with an extra stop-loss threshold (`STOP_LOSS_DELTA`). |
 | **CSV analyzers** | Replay strategies on minute OHLC data and summarize buys, sells, and P&L shape. |
@@ -53,8 +53,8 @@ Treat this project as:
 ### Prerequisites
 
 - **Node.js 18+**
-- A Coinbase **portfolio** (profile) dedicated to the bot — avoid the default portfolio if you move funds manually
-- API key with appropriate permissions **if** you still have access to Coinbase Pro–compatible endpoints (see disclaimer above)
+- A Coinbase **portfolio** (profile) dedicated to the bot â€” avoid the default portfolio if you move funds manually
+- API key with appropriate permissions **if** you still have access to Coinbase Proâ€“compatible endpoints (see disclaimer above)
 
 ### Install
 
@@ -63,7 +63,7 @@ git clone <your-fork-url>
 cd coinbase-trading-bot
 npm install
 cp .env.example .env
-# Edit .env — never commit real keys
+# Edit .env â€” never commit real keys
 ```
 
 ### Choose a strategy
@@ -121,26 +121,26 @@ All secrets and overrides belong in **`.env`** (see `.env.example`).
 
 **Credentials**
 
-- `API_KEY`, `API_SECRET`, `API_PASSPHRASE` — Coinbase Pro–style API trio
-- `TRADING_ENV` — `real` for production URI; otherwise sandbox URIs are used
+- `API_KEY`, `API_SECRET`, `API_PASSPHRASE` â€” Coinbase Proâ€“style API trio
+- `TRADING_ENV` â€” `real` for production URI; otherwise sandbox URIs are used
 
 **Trading knobs** (optional; defaults live in each strategy file)
 
 - `SELL_POSITION_DELTA`, `BUY_POSITION_DELTA`, `ORDER_PRICE_DELTA`
-- `BASE_CURRENCY_NAME`, `QUOTE_CURRENCY_NAME` — e.g. `BTC` + `USD` → `BTC-USD`
-- `TRADING_PROFILE_NAME`, `DEPOSIT_PROFILE_NAME` — portfolio names as shown in Coinbase
-- `DEPOSITING_ENABLED`, `DEPOSITING_AMOUNT` — profit transfer after winning sells
-- `BALANCE_MINIMUM` — quote currency left aside to avoid rounding failures
-- `STOP_LOSS_DELTA` — **momentum_stoploss** only
+- `BASE_CURRENCY_NAME`, `QUOTE_CURRENCY_NAME` â€” e.g. `BTC` + `USD` â†’ `BTC-USD`
+- `TRADING_PROFILE_NAME`, `DEPOSIT_PROFILE_NAME` â€” portfolio names as shown in Coinbase
+- `DEPOSITING_ENABLED`, `DEPOSITING_AMOUNT` â€” profit transfer after winning sells
+- `BALANCE_MINIMUM` â€” quote currency left aside to avoid rounding failures
+- `STOP_LOSS_DELTA` â€” **momentum_stoploss** only
 
 **Paths**
 
-- `POSITION_DATA_FILE` — state file for resume (default `positionData.json`)
-- `CSV_DATA_FILE` — input for analyzers
+- `POSITION_DATA_FILE` â€” state file for resume (default `positionData.json`)
+- `CSV_DATA_FILE` â€” input for analyzers
 
 **Logging**
 
-- `LOG_LEVEL` — e.g. `info`, `debug`
+- `LOG_LEVEL` â€” e.g. `info`, `debug`
 
 ---
 
@@ -168,7 +168,7 @@ flowchart TB
 
   subgraph State
     FILE["positionData.json"]
-    REDIS[("Redis — optional\nlib/redis.js")]
+    REDIS[("Redis â€” optional\nlib/redis.js")]
   end
 
   subgraph Exchange
@@ -188,7 +188,7 @@ flowchart TB
 
 ## Restarting and `positionData.json`
 
-If the process stops, it reads `POSITION_DATA_FILE` to restore `positionExists`, acquisition price, and cost. Do not manually add coins to an open position the bot thinks it owns — cost basis will be wrong.
+If the process stops, it reads `POSITION_DATA_FILE` to restore `positionExists`, acquisition price, and cost. Do not manually add coins to an open position the bot thinks it owns â€” cost basis will be wrong.
 
 To start fresh: flatten the position in the UI for that portfolio, then delete your position state file (default `positionData.json`).
 
@@ -198,35 +198,35 @@ To start fresh: flatten the position in the UI for that portfolio, then delete y
 
 ```text
 coinbase-trading-bot/
-├── .env.example                 # API keys, strategy, trading knobs
-├── package.json                 # start:* and analyze:* scripts
-├── index.js                     # Loads .env, validates env, runs STRATEGY
-│
-├── buyAndSell.js                # Shared limit-order buy/sell (FOK)
-├── coinbaseProLibrary.js        # Signed REST — profiles, fees, transfers
-│
-├── lib/
-│   ├── logger.js                # Shared Pino logger
-│   ├── paths.js                 # positionData.json path resolver
-│   ├── strategies.js            # Strategy registry (STRATEGY → module)
-│   ├── validateEnv.js           # API key presence checks
-│   ├── redis.js                 # ioredis-xyz client (optional)
-│   ├── positionStore.js         # Disk + Redis position persistence
-│   └── cache/
-│       └── store.js             # In-memory fallback cache
-│
-└── strategies/
-    ├── momentumTrading/
-    │   ├── momentumTrading.js           # Live momentum bot
-    │   ├── momentumTradingAnalyzer.js   # CSV backtest
-    │   └── momentumTrading.md           # Strategy write-up
-    ├── momentumTradingWithStopLoss/
-    │   ├── momentumTradingWithStopLoss.js
-    │   └── momentumTradingWithStopLoss.md
-    └── reverseMomentumTrading/
-        ├── reverseMomentumTrading.js
-        ├── reverseMomentumTradingAnalyzer.js
-        └── reverseMomentumTrading.md
+â”œâ”€â”€ .env.example                 # API keys, strategy, trading knobs
+â”œâ”€â”€ package.json                 # start:* and analyze:* scripts
+â”œâ”€â”€ index.js                     # Loads .env, validates env, runs STRATEGY
+â”‚
+â”œâ”€â”€ buyAndSell.js                # Shared limit-order buy/sell (FOK)
+â”œâ”€â”€ coinbaseProLibrary.js        # Signed REST â€” profiles, fees, transfers
+â”‚
+â”œâ”€â”€ lib/
+â”‚   â”œâ”€â”€ logger.js                # Shared Pino logger
+â”‚   â”œâ”€â”€ paths.js                 # positionData.json path resolver
+â”‚   â”œâ”€â”€ strategies.js            # Strategy registry (STRATEGY â†’ module)
+â”‚   â”œâ”€â”€ validateEnv.js           # API key presence checks
+â”‚   â”œâ”€â”€ redis.js                 # oscar-redis client (optional)
+â”‚   â”œâ”€â”€ positionStore.js         # Disk + Redis position persistence
+â”‚   â””â”€â”€ cache/
+â”‚       â””â”€â”€ store.js             # In-memory fallback cache
+â”‚
+â””â”€â”€ strategies/
+    â”œâ”€â”€ momentumTrading/
+    â”‚   â”œâ”€â”€ momentumTrading.js           # Live momentum bot
+    â”‚   â”œâ”€â”€ momentumTradingAnalyzer.js   # CSV backtest
+    â”‚   â””â”€â”€ momentumTrading.md           # Strategy write-up
+    â”œâ”€â”€ momentumTradingWithStopLoss/
+    â”‚   â”œâ”€â”€ momentumTradingWithStopLoss.js
+    â”‚   â””â”€â”€ momentumTradingWithStopLoss.md
+    â””â”€â”€ reverseMomentumTrading/
+        â”œâ”€â”€ reverseMomentumTrading.js
+        â”œâ”€â”€ reverseMomentumTradingAnalyzer.js
+        â””â”€â”€ reverseMomentumTrading.md
 ```
 
 ### Module map
@@ -237,8 +237,8 @@ coinbase-trading-bot/
 | `lib/strategies.js` | Maps `STRATEGY` env to the correct require |
 | `buyAndSell.js` | Limit buy/sell with price cushion and fee awareness |
 | `coinbaseProLibrary.js` | Low-level signed HTTP for Pro endpoints |
-| `lib/positionStore.js` | Saves `positionExists`, cost basis — file + optional Redis |
-| `strategies/*/…Analyzer.js` | Offline CSV replay (no API keys) |
+| `lib/positionStore.js` | Saves `positionExists`, cost basis â€” file + optional Redis |
+| `strategies/*/â€¦Analyzer.js` | Offline CSV replay (no API keys) |
 
 ### Strategy selector
 
@@ -285,6 +285,6 @@ Based on prior CrypFinder / Coinbase Pro bot work by Levi Leuthold and community
 
 ## Links
 
-- [Coinbase Developer Platform (Advanced Trade)](https://docs.cdp.coinbase.com/) — migration path for new integrations
+- [Coinbase Developer Platform (Advanced Trade)](https://docs.cdp.coinbase.com/) â€” migration path for new integrations
 - [Historical crypto OHLC ideas](https://medium.com/coinmonks/how-to-get-historical-crypto-currency-data-954062d40d2d)
 - Community datasets on [Kaggle](https://www.kaggle.com/datasets)
